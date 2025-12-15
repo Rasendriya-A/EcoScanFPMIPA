@@ -11,14 +11,13 @@ function Navbar() {
   return (
     <nav className="navbar">
       <div className="navbar-container">
-        <Link to="/" className="navbar-logo">
-          <span className="logo-icon">🌿</span>
+        <Link to="/home" className="navbar-logo">
           EcoScan
         </Link>
 
         <ul className="nav-menu">
           <li className="nav-item">
-            <Link to="/" className={`nav-link ${isActive('/')}`}>
+            <Link to="/home" className={`nav-link ${isActive('/home')}`}>
               Home
             </Link>
           </li>

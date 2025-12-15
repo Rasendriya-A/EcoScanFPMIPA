@@ -22,8 +22,10 @@ function Result() {
     const colors = {
       'Organik': '#4caf50',
       'Anorganik': '#2196f3',
-      'B3': '#f44336',
-      'Plastik': '#ff9800'
+      'Plastik': '#ff9800',
+      'Botol Plastik': '#ffa726',
+      'Kertas': '#8d6e63',
+      'Residu': '#757575'
     };
     return colors[category] || '#667eea';
   };
@@ -32,8 +34,10 @@ function Result() {
     const icons = {
       'Organik': '🌿',
       'Anorganik': '♻️',
-      'B3': '⚠️',
-      'Plastik': '🔄'
+      'Plastik': '🔄',
+      'Botol Plastik': '🍾',
+      'Kertas': '📄',
+      'Residu': '🗑️'
     };
     return icons[category] || '📦';
   };
@@ -85,14 +89,14 @@ function Result() {
           <p className="card-content">{result.disposal}</p>
         </div>
 
-        {/* Recycling Tips */}
-        {result.recyclingTip && (
+        {/* Additional Information */}
+        {result.additionalInfo && (
           <div className="info-card">
             <div className="card-header">
               <span className="card-icon">💡</span>
-              <h3>Tips Daur Ulang</h3>
+              <h3>Informasi Tambahan</h3>
             </div>
-            <p className="card-content">{result.recyclingTip}</p>
+            <p className="card-content">{result.additionalInfo}</p>
           </div>
         )}
 

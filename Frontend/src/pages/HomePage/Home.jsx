@@ -19,7 +19,6 @@ function Home() {
         </p>
         
         <button className="btn-primary" onClick={handleStartScan}>
-          <span className="icon">📷</span>
           Mulai Scan
         </button>
       </div>

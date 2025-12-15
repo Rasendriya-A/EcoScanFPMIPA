@@ -48,7 +48,7 @@ function Scan() {
           category: 'Anorganik',
           confidence: 95,
           disposal: 'Buang ke tempat sampah plastik/anorganik',
-          recyclingTip: 'Bersihkan dan keringkan sebelum di-recycle'
+          additionalInfo: 'Bersihkan dan keringkan sebelum di-recycle'
         }
       });
     }, 2000);
@@ -112,7 +112,6 @@ function Scan() {
                   </>
                 ) : (
                   <>
-                    <span>🔍</span>
                     Scan Sekarang
                   </>
                 )}

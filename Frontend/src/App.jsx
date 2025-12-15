@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
+import Welcome from './pages/WelcomePage/Welcome';
 import Home from './pages/HomePage/Home';
 import Scan from './pages/ScanPage/Scan';
 import Result from './pages/ResultPage/Result';
@@ -10,12 +11,32 @@ function App() {
   return (
     <Router>
       <div className="app">
-        <Navbar />
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/scan" element={<Scan />} />
-          <Route path="/result" element={<Result />} />
-          <Route path="/about" element={<About />} />
+          <Route path="/" element={<Welcome />} />
+          <Route path="/home" element={
+            <>
+              <Navbar />
+              <Home />
+            </>
+          } />
+          <Route path="/scan" element={
+            <>
+              <Navbar />
+              <Scan />
+            </>
+          } />
+          <Route path="/result" element={
+            <>
+              <Navbar />
+              <Result />
+            </>
+          } />
+          <Route path="/about" element={
+            <>
+              <Navbar />
+              <About />
+            </>
+          } />
         </Routes>
       </div>
     </Router>
