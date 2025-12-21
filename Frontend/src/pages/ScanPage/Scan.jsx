@@ -1,13 +1,35 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Scan.css';
+import { loadModel, predictImage, getWasteInfo, isModelLoaded } from '../../utils/modelUtils';
 
 function Scan() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isModelLoading, setIsModelLoading] = useState(true);
+  const [modelError, setModelError] = useState(null);
   const fileInputRef = useRef(null);
+  const imageRef = useRef(null);
   const navigate = useNavigate();
+
+  // Load model saat component mount
+  useEffect(() => {
+    const initModel = async () => {
+      if (!isModelLoaded()) {
+        setIsModelLoading(true);
+        const result = await loadModel();
+        if (!result.success) {
+          setModelError('Gagal memuat model AI. ' + result.error);
+        }
+        setIsModelLoading(false);
+      } else {
+        setIsModelLoading(false);
+      }
+    };
+
+    initModel();
+  }, []);
 
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
@@ -33,25 +55,48 @@ function Scan() {
       return;
     }
 
+    if (modelError) {
+      alert('Model AI belum siap. ' + modelError);
+      return;
+    }
+
     setIsProcessing(true);
 
-    // Simulasi proses scanning (nanti diganti dengan API call ke backend)
-    setTimeout(() => {
+    try {
+      // Tunggu image element selesai load
+      await new Promise((resolve) => {
+        if (imageRef.current && imageRef.current.complete) {
+          resolve();
+        } else {
+          imageRef.current.onload = resolve;
+        }
+      });
+
+      // Run prediction menggunakan model TFLite
+      const prediction = await predictImage(imageRef.current);
+      
+      // Get waste info berdasarkan label
+      const wasteInfo = getWasteInfo(prediction.label);
+
       setIsProcessing(false);
       
-      // Navigate ke result page dengan data
+      // Navigate ke result page dengan data prediksi
       navigate('/result', {
         state: {
           image: previewUrl,
-          // Data ini nanti akan dari API response
-          wasteType: 'Plastik',
-          category: 'Anorganik',
-          confidence: 95,
-          disposal: 'Buang ke tempat sampah plastik/anorganik',
-          additionalInfo: 'Bersihkan dan keringkan sebelum di-recycle'
+          wasteType: prediction.label,
+          category: wasteInfo.category,
+          confidence: Math.round(prediction.confidence),
+          disposal: wasteInfo.disposal,
+          additionalInfo: wasteInfo.additionalInfo,
+          allPredictions: prediction.allPredictions
         }
       });
-    }, 2000);
+    } catch (error) {
+      setIsProcessing(false);
+      console.error('Error during scanning:', error);
+      alert('Terjadi kesalahan saat memproses gambar: ' + error.message);
+    }
   };
 
   const handleReset = () => {
@@ -67,6 +112,17 @@ function Scan() {
       <div className="scan-header">
         <h1>Scan Sampah</h1>
         <p>Ambil atau upload foto sampah untuk identifikasi</p>
+        {isModelLoading && (
+          <div className="model-status loading">
+            <span className="spinner-small"></span>
+            Memuat model AI...
+          </div>
+        )}
+        {modelError && (
+          <div className="model-status error">
+            ⚠️ {modelError}
+          </div>
+        )}
       </div>
 
       <div className="scan-content">
@@ -89,7 +145,12 @@ function Scan() {
         ) : (
           <div className="preview-section">
             <div className="image-preview">
-              <img src={previewUrl} alt="Preview" />
+              <img 
+                ref={imageRef}
+                src={previewUrl} 
+                alt="Preview" 
+                crossOrigin="anonymous"
+              />
             </div>
             
             <div className="action-buttons">
@@ -103,7 +164,7 @@ function Scan() {
               <button 
                 className="btn-primary" 
                 onClick={handleScan}
-                disabled={isProcessing}
+                disabled={isProcessing || isModelLoading}
               >
                 {isProcessing ? (
                   <>

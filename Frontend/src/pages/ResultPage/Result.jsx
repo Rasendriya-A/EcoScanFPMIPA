@@ -33,10 +33,8 @@ function Result() {
   const getCategoryIcon = (category) => {
     const icons = {
       'Organik': '🌿',
-      'Anorganik': '♻️',
-      'Plastik': '🔄',
-      'Botol Plastik': '🍾',
-      'Kertas': '📄',
+      'Non Organik': '♻️',
+      'Daur Ulang': '♻️',
       'Residu': '🗑️'
     };
     return icons[category] || '📦';
@@ -97,6 +95,30 @@ function Result() {
               <h3>Informasi Tambahan</h3>
             </div>
             <p className="card-content">{result.additionalInfo}</p>
+          </div>
+        )}
+
+        {/* All Predictions (confidence breakdown) */}
+        {result.allPredictions && result.allPredictions.length > 0 && (
+          <div className="info-card">
+            <div className="card-header">
+              <span className="card-icon">📊</span>
+              <h3>Detail Prediksi</h3>
+            </div>
+            <div className="predictions-list">
+              {result.allPredictions.map((pred, index) => (
+                <div key={index} className="prediction-item">
+                  <span className="prediction-label">{pred.label}</span>
+                  <div className="prediction-bar-container">
+                    <div 
+                      className="prediction-bar-fill" 
+                      style={{ width: `${pred.confidence}%` }}
+                    ></div>
+                  </div>
+                  <span className="prediction-confidence">{pred.confidence}%</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

@@ -177,6 +177,48 @@
   transform: translateY(-2px);
 }
 
+/* Predictions List Styles */
+.predictions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.prediction-item {
+  display: grid;
+  grid-template-columns: 180px 1fr 60px;
+  align-items: center;
+  gap: 15px;
+}
+
+.prediction-label {
+  font-weight: 500;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.prediction-bar-container {
+  height: 24px;
+  background: #e0e0e0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.prediction-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  transition: width 0.5s ease;
+  border-radius: 12px;
+}
+
+.prediction-confidence {
+  font-weight: 600;
+  color: #667eea;
+  text-align: right;
+  font-size: 0.9rem;
+}
+
 @media (max-width: 768px) {
   .result-container {
     padding: 15px;
@@ -196,5 +238,14 @@
 
   .result-image {
     max-height: 300px;
+  }
+
+  .prediction-item {
+    grid-template-columns: 120px 1fr 50px;
+    gap: 10px;
+  }
+
+  .prediction-label {
+    font-size: 0.85rem;
   }
 }

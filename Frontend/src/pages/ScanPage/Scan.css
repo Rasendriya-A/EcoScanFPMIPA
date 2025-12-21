@@ -189,6 +189,37 @@
   font-weight: 500;
 }
 
+/* Model Status Styles */
+.model-status {
+  margin-top: 15px;
+  padding: 10px 20px;
+  border-radius: 25px;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.model-status.loading {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.model-status.error {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.spinner-small {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(25, 118, 210, 0.3);
+  border-top-color: #1976d2;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
 @media (max-width: 768px) {
   .scan-container {
     padding: 15px;
