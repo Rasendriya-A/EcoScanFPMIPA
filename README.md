@@ -49,7 +49,7 @@ Buka browser ke http://localhost:5173
 3. Copy URL
 4. Edit `Project/src/utils/modelUtils.js`:
    ```javascript
-   const MODEL_URL = 'https://teachablemachine.withgoogle.com/models/YOUR_ID/';
+   const MODEL_URL = "https://teachablemachine.withgoogle.com/models/YOUR_ID/";
    ```
 
 ### Opsi 2: Local Download
@@ -85,12 +85,14 @@ Buka browser ke http://localhost:5173
 ## ✅ Status
 
 **Sudah Selesai:**
+
 - ✅ Frontend UI lengkap (5 pages)
 - ✅ TensorFlow.js integration
 - ✅ Image preprocessing & prediction
 - ✅ Error handling
 
 **Yang Perlu Dilakukan:**
+
 - ⚠️ Export model dari Teachable Machine (format TensorFlow.js)
 - ⚠️ Update `MODEL_URL` di `modelUtils.js`
 - ⚠️ Test dengan real model
