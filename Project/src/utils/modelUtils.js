@@ -4,44 +4,81 @@ let model = null;
 let labels = [];
 
 /**
- * Load model dan labels
- * Untuk TFLite, kita perlu konversi dulu ke TensorFlow.js format
- * Alternatif: gunakan Teachable Machine export dengan TensorFlow.js
+ * Load model TensorFlow.js
+ * Mendukung 3 format:
+ * 1. Teachable Machine hosted URL
+ * 2. TensorFlow.js model.json (dari Teachable Machine export)
+ * 3. TensorFlow.js Graph Model
  */
 export async function loadModel() {
   try {
     console.log('Loading model...');
     
-    // Load labels
-    const response = await fetch('/labels.txt');
-    const text = await response.text();
-    labels = text.trim().split('\n').map(line => {
-      // Format: "0 Organik" -> extract "Organik"
-      return line.split(' ').slice(1).join(' ');
-    });
-    console.log('Labels loaded:', labels);
-
-    // Note: TFLite tidak bisa langsung dimuat di browser dengan TensorFlow.js biasa
-    // Ada beberapa opsi:
-    // 1. Konversi TFLite ke TensorFlow.js format menggunakan tfjs-converter
-    // 2. Export ulang dari Teachable Machine dengan format TensorFlow.js
-    // 3. Gunakan Teachable Machine hosted model URL
+    // Load labels dari metadata.json (dari Teachable Machine)
+    const metadataResponse = await fetch('/metadata.json');
+    const metadata = await metadataResponse.json();
+    const modelLabels = metadata.labels; // Labels asli dari model
+    console.log('Model labels loaded:', modelLabels);
     
-    // Untuk sementara, kita akan simulasi model
-    // PENTING: Anda perlu export ulang model dari Teachable Machine dengan format TensorFlow.js
-    // atau convert model_unquant.tflite ke format TFJS
-    
-    console.warn('TFLite model tidak bisa langsung dimuat. Silakan export model dari Teachable Machine dalam format TensorFlow.js atau gunakan converter.');
-    
-    // Simulasi model untuk testing UI
-    model = {
-      predict: async (tensor) => {
-        // Simulasi prediksi - random untuk testing
-        // Ganti dengan model.predict() setelah model di-convert
-        const predictions = tf.randomUniform([1, labels.length]);
-        return predictions;
-      }
+    // Mapping dari label model ke label yang diinginkan
+    // Model output: ["Organik", "Plastik", "Botol Plastik", "Kertas", "Residu", "Anorganik"]
+    // User ingin: ["Organik", "Botol Plastik", "Anorganik", "Kertas", "Residu"]
+    const labelMapping = {
+      'Organik': 'Organik',
+      'Plastik': 'Anorganik',      // Plastik → Anorganik
+      'Botol Plastik': 'Botol Plastik',
+      'Kertas': 'Kertas',
+      'Residu': 'Residu',
+      'Anorganik': 'Anorganik'
     };
+    
+    // Map labels dari model ke format yang diinginkan
+    labels = modelLabels.map(label => labelMapping[label] || label);
+    console.log('Mapped labels:', labels);
+
+    // Try loading model in different formats
+    let modelLoaded = false;
+    
+    // Option 1: Try loading from Teachable Machine hosted URL
+    // Uncomment and set your Teachable Machine URL if available
+    // const TEACHABLE_MACHINE_URL = 'https://teachablemachine.withgoogle.com/models/YOUR_MODEL_ID/';
+    // try {
+    //   model = await tf.loadLayersModel(TEACHABLE_MACHINE_URL + 'model.json');
+    //   console.log('Model loaded from Teachable Machine URL');
+    //   modelLoaded = true;
+    // } catch (e) {
+    //   console.log('Teachable Machine URL not available');
+    // }
+
+    // Option 2: Try loading LayersModel from public folder
+    if (!modelLoaded) {
+      try {
+        model = await tf.loadLayersModel('/model.json');
+        console.log('LayersModel loaded from public/model.json');
+        modelLoaded = true;
+      } catch (e) {
+        console.log('model.json not found in public folder');
+      }
+    }
+
+    // Option 3: Try loading GraphModel from public folder
+    if (!modelLoaded) {
+      try {
+        model = await tf.loadGraphModel('/model.json');
+        console.log('GraphModel loaded from public/model.json');
+        modelLoaded = true;
+      } catch (e) {
+        console.log('GraphModel not found');
+      }
+    }
+
+    if (!modelLoaded) {
+      throw new Error(
+        'Model tidak ditemukan. ' +
+        'Silakan export model dari Teachable Machine dalam format TensorFlow.js ' +
+        'dan letakkan file model.json serta .bin files di folder public/'
+      );
+    }
 
     return { success: true };
   } catch (error) {
@@ -86,7 +123,7 @@ export async function predictImage(imageElement) {
     // Preprocess image
     const tensor = preprocessImage(imageElement);
     
-    // Run inference
+    // Run inference menggunakan model yang sebenarnya
     const predictions = await model.predict(tensor);
     
     // Get prediction data
@@ -107,18 +144,21 @@ export async function predictImage(imageElement) {
       }
     }
 
-    const confidence = (maxValue * 100).toFixed(2);
+    const confidence = parseFloat((maxValue * 100).toFixed(2));
     const label = labels[maxIndex];
 
     console.log('Prediction result:', { label, confidence });
 
+    // Return dengan confidence sebagai number dan sorted predictions
     return {
       label,
-      confidence: parseFloat(confidence),
-      allPredictions: labels.map((label, i) => ({
-        label,
-        confidence: (predictionData[i] * 100).toFixed(2)
-      }))
+      confidence,
+      allPredictions: labels
+        .map((label, i) => ({
+          label,
+          confidence: parseFloat((predictionData[i] * 100).toFixed(2))
+        }))
+        .sort((a, b) => b.confidence - a.confidence) // Sort descending by confidence
     };
   } catch (error) {
     console.error('Error during prediction:', error);
@@ -138,22 +178,22 @@ export function getWasteInfo(label) {
       disposal: 'Buang ke tempat sampah organik/hijau. Dapat dikompos untuk pupuk.',
       additionalInfo: 'Sampah organik dapat terurai secara alami dan bisa dijadikan kompos yang berguna untuk tanaman.'
     },
-    'Non Organik Daur Ulang': {
-      category: 'Non Organik',
-      icon: '♻️',
-      color: '#2196f3',
-      disposal: 'Buang ke tempat sampah non organik/biru. Pisahkan untuk daur ulang.',
-      additionalInfo: 'Bersihkan terlebih dahulu sebelum dibuang untuk memudahkan proses daur ulang.'
-    },
     'Botol Plastik': {
-      category: 'Daur Ulang',
+      category: 'Botol Plastik',
       icon: '🍾',
       color: '#ffa726',
       disposal: 'Cuci bersih, lepas tutup dan label, lalu buang ke tempat sampah plastik.',
       additionalInfo: 'Botol plastik dapat didaur ulang menjadi berbagai produk baru. Pastikan bersih dan kering.'
     },
+    'Anorganik': {
+      category: 'Anorganik',
+      icon: '♻️',
+      color: '#2196f3',
+      disposal: 'Buang ke tempat sampah anorganik/biru. Pisahkan untuk daur ulang.',
+      additionalInfo: 'Sampah anorganik termasuk plastik tidak dapat terurai secara alami. Bersihkan terlebih dahulu sebelum dibuang untuk memudahkan proses daur ulang.'
+    },
     'Kertas': {
-      category: 'Daur Ulang',
+      category: 'Kertas',
       icon: '📄',
       color: '#8d6e63',
       disposal: 'Buang ke tempat sampah kertas. Pastikan kertas dalam kondisi kering.',
