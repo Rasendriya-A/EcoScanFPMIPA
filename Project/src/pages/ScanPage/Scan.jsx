@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLocation } from '../../context/LocationContext';
+import { FAKULTAS_OPTIONS } from '../../utils/locationConfig';
 import './Scan.css';
 import { loadModel, predictImage, getWasteInfo, isModelLoaded } from '../../utils/modelUtils';
 
@@ -12,6 +14,15 @@ function Scan() {
   const fileInputRef = useRef(null);
   const imageRef = useRef(null);
   const navigate = useNavigate();
+  const { selectedFakultas, isLocationSet } = useLocation();
+
+  // Cek apakah user sudah pilih fakultas
+  useEffect(() => {
+    if (!selectedFakultas) {
+      alert('Silakan pilih fakultas terlebih dahulu!');
+      navigate('/home');
+    }
+  }, [selectedFakultas, navigate]);
 
   // Load model saat component mount
   useEffect(() => {
@@ -80,7 +91,7 @@ function Scan() {
 
       setIsProcessing(false);
       
-      // Navigate ke result page dengan data prediksi
+      // Navigate ke result page dengan data prediksi dan fakultas
       navigate('/result', {
         state: {
           image: previewUrl,
@@ -89,7 +100,9 @@ function Scan() {
           confidence: Math.round(prediction.confidence),
           disposal: wasteInfo.disposal,
           additionalInfo: wasteInfo.additionalInfo,
-          allPredictions: prediction.allPredictions
+          allPredictions: prediction.allPredictions,
+          // Tambahkan info fakultas (lokasi spesifik dipilih di Result page)
+          fakultas: selectedFakultas
         }
       });
     } catch (error) {
@@ -107,11 +120,34 @@ function Scan() {
     }
   };
 
+  const handleChangeLocation = () => {
+    navigate('/home');
+  };
+
+  const fakultasLabel = FAKULTAS_OPTIONS.find(f => f.value === selectedFakultas)?.label || '';
+
   return (
     <div className="scan-container">
       <div className="scan-header">
         <h1>Scan Sampah</h1>
         <p>Ambil atau upload foto sampah untuk identifikasi</p>
+        
+        {/* Fakultas Info */}
+        {selectedFakultas && (
+          <div className="location-info-box">
+            <div className="location-display">
+              <span className="location-icon">🏛️</span>
+              <div className="location-text">
+                <span className="location-label">Fakultas:</span>
+                <span className="location-name">{fakultasLabel}</span>
+              </div>
+            </div>
+            <button className="btn-change-location" onClick={handleChangeLocation}>
+              Ganti Fakultas
+            </button>
+          </div>
+        )}
+        
         {isModelLoading && (
           <div className="model-status loading">
             <span className="spinner-small"></span>

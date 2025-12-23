@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { LocationProvider } from './context/LocationContext';
 import Navbar from './components/Navbar';
 import Welcome from './pages/WelcomePage/Welcome';
 import Home from './pages/HomePage/Home';
@@ -9,37 +10,39 @@ import './App.css';
 
 function App() {
   return (
-    <Router>
-      <div className="app">
-        <Routes>
-          <Route path="/" element={<Welcome />} />
-          <Route path="/home" element={
-            <>
-              <Navbar />
-              <Home />
-            </>
-          } />
-          <Route path="/scan" element={
-            <>
-              <Navbar />
-              <Scan />
-            </>
-          } />
-          <Route path="/result" element={
-            <>
-              <Navbar />
-              <Result />
-            </>
-          } />
-          <Route path="/about" element={
-            <>
-              <Navbar />
-              <About />
-            </>
-          } />
-        </Routes>
-      </div>
-    </Router>
+    <LocationProvider>
+      <Router>
+        <div className="app">
+          <Routes>
+            <Route path="/" element={<Welcome />} />
+            <Route path="/home" element={
+              <>
+                <Navbar />
+                <Home />
+              </>
+            } />
+            <Route path="/scan" element={
+              <>
+                <Navbar />
+                <Scan />
+              </>
+            } />
+            <Route path="/result" element={
+              <>
+                <Navbar />
+                <Result />
+              </>
+            } />
+            <Route path="/about" element={
+              <>
+                <Navbar />
+                <About />
+              </>
+            } />
+          </Routes>
+        </div>
+      </Router>
+    </LocationProvider>
   );
 }
 

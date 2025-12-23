@@ -1,11 +1,62 @@
-import { useLocation, useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useLocation as useRouterLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation } from '../../context/LocationContext';
+import { 
+  FAKULTAS_OPTIONS, 
+  mapWasteTypeToBin, 
+  findLocationsWithBin,
+  findLocationsWithFallback,
+  getFallbackBin,
+  binMatches
+} from '../../utils/locationConfig';
 import './Result.css';
 
 function Result() {
-  const location = useLocation();
+  const routerLocation = useRouterLocation();
   const navigate = useNavigate();
-  const result = location.state;
+  const result = routerLocation.state;
+  const { selectedFakultas } = useLocation();
+  
+  // State untuk accordion (track which fakultas/location is expanded)
+  const [expandedFakultas, setExpandedFakultas] = useState({});
+  
+  const fakultasLabel = selectedFakultas 
+    ? FAKULTAS_OPTIONS.find(f => f.value === selectedFakultas)?.label 
+    : '';
+  
+  // Map waste type ke bin category
+  const targetBin = result ? mapWasteTypeToBin(result.wasteType) : '';
+  const fallbackBin = result ? getFallbackBin(result.wasteType) : null;
+  
+  // Cari lokasi dengan fallback option
+  const locationResult = selectedFakultas && result
+    ? findLocationsWithFallback(selectedFakultas, result.wasteType)
+    : { hasPrimary: false, hasFallback: false, primaryLocations: [], fallbackLocations: [] };
+  
+  // Debug logging
+  console.log('Debug Info:', {
+    fakultas: selectedFakultas,
+    wasteType: result?.wasteType,
+    targetBin,
+    fallbackBin,
+    locationResult
+  });
+  
+  // Cari semua lokasi di fakultas lain yang punya bin spesifik
+  const allLocationsWithBin = targetBin ? findLocationsWithBin(targetBin) : {};
+  
+  // Check kondisi
+  const hasPrimaryBin = locationResult.hasPrimary;
+  const hasFallbackOnly = !locationResult.hasPrimary && locationResult.hasFallback;
+  const hasNoBin = !locationResult.hasPrimary && !locationResult.hasFallback;
+  
+  // Toggle accordion
+  const toggleFakultas = (fakultasKey) => {
+    setExpandedFakultas(prev => ({
+      ...prev,
+      [fakultasKey]: !prev[fakultasKey]
+    }));
+  };
 
   useEffect(() => {
     // Redirect ke scan jika tidak ada data
@@ -44,6 +95,14 @@ function Result() {
     <div className="result-container">
       <div className="result-header">
         <h1>Hasil Identifikasi</h1>
+        
+        {/* Fakultas Info */}
+        {fakultasLabel && (
+          <div className="location-display-header">
+            <span className="location-icon">🏛️</span>
+            <span className="location-text">{fakultasLabel}</span>
+          </div>
+        )}
       </div>
 
       <div className="result-content">
@@ -78,23 +137,238 @@ function Result() {
           </div>
         </div>
 
-        {/* Disposal Instructions */}
-        <div className="info-card">
-          <div className="card-header">
-            <span className="card-icon">🗑️</span>
-            <h3>Cara Pembuangan</h3>
-          </div>
-          <p className="card-content">{result.disposal}</p>
-        </div>
-
-        {/* Additional Information */}
-        {result.additionalInfo && (
-          <div className="info-card">
+        {/* Kondisi 1: Fakultas user PUNYA tempat sampah SPESIFIK */}
+        {hasPrimaryBin && (
+          <div className="info-card disposal-card available">
             <div className="card-header">
-              <span className="card-icon">💡</span>
-              <h3>Informasi Tambahan</h3>
+              <span className="card-icon">✅</span>
+              <h3>Tempat Pembuangan Tersedia di {fakultasLabel}</h3>
             </div>
-            <p className="card-content">{result.additionalInfo}</p>
+            <p className="card-content disposal-message">
+              Buang sampah <strong>{result.wasteType}</strong> ke tempat sampah <strong>{targetBin}</strong> yang tersedia di lokasi berikut:
+            </p>
+            
+            <div className="locations-container">
+              {locationResult.primaryLocations.map((lokasi, index) => (
+                <div key={index} className="location-item">
+                  <div className="location-item-header">
+                    <span className="location-icon">📍</span>
+                    <div className="location-item-info">
+                      <h4 className="location-name">{lokasi.label}</h4>
+                      <p className="location-desc">{lokasi.description}</p>
+                    </div>
+                  </div>
+                  <div className="location-bins">
+                    <span className="bins-label">Tempat sampah:</span>
+                    <div className="bins-tags">
+                      {lokasi.bins.map((bin, binIndex) => (
+                        <span 
+                          key={binIndex} 
+                          className={`bin-tag ${binMatches(bin, targetBin) ? 'highlight' : ''}`}
+                        >
+                          {bin}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Kondisi 1.5: Fakultas user TIDAK PUNYA tempat spesifik tapi PUNYA FALLBACK */}
+        {hasFallbackOnly && (
+          <>
+            {/* Tampilkan Fallback Option */}
+            <div className="info-card disposal-card fallback">
+              <div className="card-header">
+                <span className="card-icon">ℹ️</span>
+                <h3>Alternatif Pembuangan di {fakultasLabel}</h3>
+              </div>
+              <p className="card-content disposal-message">
+                Tempat sampah khusus <strong>{targetBin}</strong> tidak tersedia di {fakultasLabel}, 
+                tetapi Anda dapat membuang sampah <strong>{result.wasteType}</strong> ke tempat sampah <strong>{locationResult.fallbackBin}</strong> sebagai alternatif.
+              </p>
+              
+              <div className="locations-container">
+                {locationResult.fallbackLocations.map((lokasi, index) => (
+                  <div key={index} className="location-item">
+                    <div className="location-item-header">
+                      <span className="location-icon">📍</span>
+                      <div className="location-item-info">
+                        <h4 className="location-name">{lokasi.label}</h4>
+                        <p className="location-desc">{lokasi.description}</p>
+                      </div>
+                    </div>
+                    <div className="location-bins">
+                      <span className="bins-label">Tempat sampah:</span>
+                      <div className="bins-tags">
+                        {lokasi.bins.map((bin, binIndex) => (
+                          <span 
+                            key={binIndex} 
+                            className={`bin-tag ${binMatches(bin, locationResult.fallbackBin) ? 'highlight-fallback' : ''}`}
+                          >
+                            {bin}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Tampilkan Rekomendasi Lokasi dengan Tempat Sampah Spesifik */}
+            {Object.keys(allLocationsWithBin).length > 0 && (
+              <div className="info-card recommendation-card">
+                <div className="card-header">
+                  <span className="card-icon">⭐</span>
+                  <h3>Rekomendasi Tempat Sampah Khusus {targetBin}</h3>
+                </div>
+                <p className="card-content">
+                  Untuk hasil yang lebih optimal, berikut lokasi yang menyediakan tempat sampah khusus <strong>{targetBin}</strong>:
+                </p>
+                
+                <div className="fakultas-recommendations">
+                  {Object.keys(allLocationsWithBin).map((fakultasKey) => {
+                    const fakultasInfo = FAKULTAS_OPTIONS.find(f => f.value === fakultasKey);
+                    const locations = allLocationsWithBin[fakultasKey];
+                    const isExpanded = expandedFakultas[fakultasKey];
+                    
+                    return (
+                      <div key={fakultasKey} className="fakultas-accordion">
+                        <div 
+                          className="fakultas-accordion-header"
+                          onClick={() => toggleFakultas(fakultasKey)}
+                        >
+                          <div className="fakultas-accordion-title">
+                            <span className="fakultas-icon">🏛️</span>
+                            <span className="fakultas-name">{fakultasInfo?.label || fakultasKey}</span>
+                            <span className="location-count">({locations.length} lokasi)</span>
+                          </div>
+                          <span className={`accordion-arrow ${isExpanded ? 'expanded' : ''}`}>
+                            ▼
+                          </span>
+                        </div>
+                        
+                        {isExpanded && (
+                          <div className="fakultas-accordion-content">
+                            {locations.map((lokasi, index) => (
+                              <div key={index} className="location-item">
+                                <div className="location-item-header">
+                                  <span className="location-icon">📍</span>
+                                  <div className="location-item-info">
+                                    <h4 className="location-name">{lokasi.label}</h4>
+                                    <p className="location-desc">{lokasi.description}</p>
+                                  </div>
+                                </div>
+                                <div className="location-bins">
+                                  <span className="bins-label">Tempat sampah:</span>
+                                  <div className="bins-tags">
+                                    {lokasi.bins.map((bin, binIndex) => (
+                                      <span 
+                                        key={binIndex} 
+                                        className={`bin-tag ${binMatches(bin, targetBin) ? 'highlight' : ''}`}
+                                      >
+                                        {bin}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Kondisi 2: Fakultas user TIDAK PUNYA tempat sampah sama sekali */}
+        {hasNoBin && Object.keys(allLocationsWithBin).length > 0 && (
+          <div className="info-card disposal-card not-available">
+            <div className="card-header">
+              <span className="card-icon">⚠️</span>
+              <h3>Tempat Sampah Tidak Tersedia di {fakultasLabel}</h3>
+            </div>
+            <p className="card-content disposal-message">
+              Tempat sampah <strong>{targetBin}</strong> untuk sampah <strong>{result.wasteType}</strong> tidak tersedia di {fakultasLabel}. 
+              Berikut rekomendasi lokasi terdekat yang menyediakan tempat sampah ini:
+            </p>
+            
+            <div className="fakultas-recommendations">
+              {Object.keys(allLocationsWithBin).map((fakultasKey) => {
+                const fakultasInfo = FAKULTAS_OPTIONS.find(f => f.value === fakultasKey);
+                const locations = allLocationsWithBin[fakultasKey];
+                const isExpanded = expandedFakultas[fakultasKey];
+                
+                return (
+                  <div key={fakultasKey} className="fakultas-accordion">
+                    <div 
+                      className="fakultas-accordion-header"
+                      onClick={() => toggleFakultas(fakultasKey)}
+                    >
+                      <div className="fakultas-accordion-title">
+                        <span className="fakultas-icon">🏛️</span>
+                        <span className="fakultas-name">{fakultasInfo?.label || fakultasKey}</span>
+                        <span className="location-count">({locations.length} lokasi)</span>
+                      </div>
+                      <span className={`accordion-arrow ${isExpanded ? 'expanded' : ''}`}>
+                        ▼
+                      </span>
+                    </div>
+                    
+                    {isExpanded && (
+                      <div className="fakultas-accordion-content">
+                        {locations.map((lokasi, index) => (
+                          <div key={index} className="location-item">
+                            <div className="location-item-header">
+                              <span className="location-icon">📍</span>
+                              <div className="location-item-info">
+                                <h4 className="location-name">{lokasi.label}</h4>
+                                <p className="location-desc">{lokasi.description}</p>
+                              </div>
+                            </div>
+                            <div className="location-bins">
+                              <span className="bins-label">Tempat sampah:</span>
+                              <div className="bins-tags">
+                                {lokasi.bins.map((bin, binIndex) => (
+                                  <span 
+                                    key={binIndex} 
+                                    className={`bin-tag ${bin.includes(targetBin) ? 'highlight' : ''}`}
+                                  >
+                                    {bin}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Jika tidak ada tempat sampah sama sekali */}
+        {hasNoBin && Object.keys(allLocationsWithBin).length === 0 && (
+          <div className="info-card disposal-card not-available">
+            <div className="card-header">
+              <span className="card-icon">⚠️</span>
+              <h3>Tempat Sampah Tidak Ditemukan</h3>
+            </div>
+            <p className="card-content disposal-message">
+              Maaf, tempat sampah untuk <strong>{result.wasteType}</strong> belum tersedia di sistem kami.
+              Silakan hubungi pengelola kampus untuk informasi lebih lanjut.
+            </p>
           </div>
         )}
 
@@ -126,7 +400,7 @@ function Result() {
         <div className="action-buttons">
           <button 
             className="btn-secondary" 
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/home')}
           >
             Kembali ke Home
           </button>
