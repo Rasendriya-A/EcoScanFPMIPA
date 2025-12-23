@@ -20,16 +20,19 @@ export async function loadModel() {
     const modelLabels = metadata.labels; // Labels asli dari model
     console.log('Model labels loaded:', modelLabels);
     
-    // Mapping dari label model ke label yang diinginkan
-    // Model output: ["Organik", "Plastik", "Botol Plastik", "Kertas", "Residu", "Anorganik"]
-    // User ingin: ["Organik", "Botol Plastik", "Anorganik", "Kertas", "Residu"]
+    // Model baru dengan 6 labels termasuk B3
+    // Model output dari metadata: ["Organik", "Botol Plastik", "Kertas", "Residu", "Non Organik Daur Ulang", "B3"]
+    // Mapping ke format yang konsisten
     const labelMapping = {
       'Organik': 'Organik',
-      'Plastik': 'Anorganik',      // Plastik → Anorganik
       'Botol Plastik': 'Botol Plastik',
+      'Botol Plasti': 'Botol Plastik',  // Handle truncated name from metadata
       'Kertas': 'Kertas',
       'Residu': 'Residu',
-      'Anorganik': 'Anorganik'
+      'Non Organik Daur Ulang': 'Anorganik',
+      'Non Organik ...': 'Anorganik',  // Handle truncated name
+      'Anorganik': 'Anorganik',
+      'B3': 'B3'
     };
     
     // Map labels dari model ke format yang diinginkan
@@ -192,6 +195,13 @@ export function getWasteInfo(label) {
       disposal: 'Buang ke tempat sampah anorganik/biru. Pisahkan untuk daur ulang.',
       additionalInfo: 'Sampah anorganik termasuk plastik tidak dapat terurai secara alami. Bersihkan terlebih dahulu sebelum dibuang untuk memudahkan proses daur ulang.'
     },
+    'Non Organik Daur Ulang': {
+      category: 'Anorganik',
+      icon: '♻️',
+      color: '#2196f3',
+      disposal: 'Buang ke tempat sampah anorganik/biru. Pisahkan untuk daur ulang.',
+      additionalInfo: 'Sampah anorganik termasuk plastik tidak dapat terurai secara alami. Bersihkan terlebih dahulu sebelum dibuang untuk memudahkan proses daur ulang.'
+    },
     'Kertas': {
       category: 'Kertas',
       icon: '📄',
@@ -205,8 +215,20 @@ export function getWasteInfo(label) {
       color: '#757575',
       disposal: 'Buang ke tempat sampah residu/hitam. Tidak dapat didaur ulang.',
       additionalInfo: 'Sampah residu adalah sampah yang tidak dapat didaur ulang dan tidak dapat terurai dengan cepat.'
+    },
+    'B3': {
+      category: 'B3',
+      icon: '☢️',
+      color: '#f44336',
+      disposal: 'Buang ke tempat sampah B3 (Bahan Berbahaya dan Beracun). JANGAN dicampur dengan sampah lain.',
+      additionalInfo: 'Sampah B3 seperti baterai, lampu, obat-obatan, dan bahan kimia memerlukan penanganan khusus karena berbahaya bagi lingkungan dan kesehatan.'
     }
   };
+
+  // Fallback untuk 'Non Organik Daur Ulang' ke 'Anorganik'
+  if (label === 'Non Organik Daur Ulang' || label.includes('Non Organik')) {
+    return wasteInfoMap['Anorganik'];
+  }
 
   return wasteInfoMap[label] || {
     category: 'Unknown',
